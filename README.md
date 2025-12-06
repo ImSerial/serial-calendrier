@@ -1,0 +1,6 @@
+# CONFIGURATION ENV :
+
+```
+TOKEN=
+OWNERS=
+```
