@@ -15,22 +15,17 @@ require("dotenv").config();
 
 const TOKEN = process.env.TOKEN;
 
-// MULTI-OWNERS : OWNERS=ID1,ID2,ID3 dans le .env
-const OWNERS = process.env.OWNERS
-    ? process.env.OWNERS.split(",").map(id => id.trim())
-    : [];
+const OWNERS = process.env.OWNERS ?
+    process.env.OWNERS.split(",").map(id => id.trim()) :
+    [];
 
 function isOwner(userId) {
     return OWNERS.includes(userId);
 }
 
-// Flags pour réponses éphémères (équivalent à ephemeral: true)
 const EPHEMERAL = 64;
 
-// GIF de Noël pour les logs
 const CHRISTMAS_GIF = "https://media4.giphy.com/media/v1.Y2lkPTZjMDliOTUyemUxYmczN3FsZXVmdnl4eXRiajQ2d2J3bmFpbm1rdjNxbGZ4ZWJwYyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/SSiXSDrxlfohtQ7Irn/giphy.gif";
-
-// ===================== DB INIT =====================
 const db = new sqlite.Database("./database.sqlite", () => {
     db.run("CREATE TABLE IF NOT EXISTS advent_rewards (day INTEGER PRIMARY KEY, role_id TEXT, win_text TEXT)");
     db.run("CREATE TABLE IF NOT EXISTS advent_claims (user_id TEXT, day INTEGER)");
@@ -38,113 +33,107 @@ const db = new sqlite.Database("./database.sqlite", () => {
     db.run("CREATE TABLE IF NOT EXISTS advent_blacklist (guild_id TEXT, user_id TEXT)");
 });
 
-// ===================== CLIENT =====================
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
 });
 
-// ===================== SLASH COMMANDS =====================
 const commands = [
 
-    // /calendrier
     new SlashCommandBuilder()
-        .setName("calendrier")
-        .setDescription("Envoie le calendrier de l'avent dans un salon.")
-        .addChannelOption(opt =>
-            opt.setName("salon")
-                .setDescription("Salon où envoyer le calendrier.")
-                .setRequired(true)
-        ),
+    .setName("calendrier")
+    .setDescription("Envoie le calendrier de l'avent dans un salon.")
+    .addChannelOption(opt =>
+        opt.setName("salon")
+        .setDescription("Salon où envoyer le calendrier.")
+        .setRequired(true)
+    ),
 
-    // /setlogs
     new SlashCommandBuilder()
-        .setName("setlogs")
-        .setDescription("Définir le salon de logs des récompenses.")
-        .addChannelOption(opt =>
-            opt.setName("salon")
-                .setDescription("Salon de logs du calendrier.")
-                .setRequired(true)
-        ),
+    .setName("setlogs")
+    .setDescription("Définir le salon de logs des récompenses.")
+    .addChannelOption(opt =>
+        opt.setName("salon")
+        .setDescription("Salon de logs du calendrier.")
+        .setRequired(true)
+    ),
 
-    // /récompense set + show + clear
     new SlashCommandBuilder()
-        .setName("récompense")
-        .setDescription("Gérer les récompenses du calendrier.")
-        .addSubcommand(sub =>
-            sub
-                .setName("set")
-                .setDescription("Définir une récompense pour un jour.")
-                .addIntegerOption(opt =>
-                    opt.setName("jour")
-                        .setDescription("Jour (1-25)")
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(25)
-                )
-                .addRoleOption(opt =>
-                    opt.setName("role")
-                        .setDescription("Rôle gagné.")
-                        .setRequired(false)
-                )
-                .addStringOption(opt =>
-                    opt.setName("win")
-                        .setDescription("Texte gagné.")
-                        .setRequired(false)
-                )
+    .setName("récompense")
+    .setDescription("Gérer les récompenses du calendrier.")
+    .addSubcommand(sub =>
+        sub
+        .setName("set")
+        .setDescription("Définir une récompense pour un jour.")
+        .addIntegerOption(opt =>
+            opt.setName("jour")
+            .setDescription("Jour (1-25)")
+            .setRequired(true)
+            .setMinValue(1)
+            .setMaxValue(25)
         )
-        .addSubcommand(sub =>
-            sub
-                .setName("show")
-                .setDescription("Afficher les récompenses configurées avec pagination.")
+        .addRoleOption(opt =>
+            opt.setName("role")
+            .setDescription("Rôle gagné.")
+            .setRequired(false)
         )
-        .addSubcommand(sub =>
-            sub
-                .setName("clear")
-                .setDescription("Réinitialiser toutes les récompenses du calendrier.")
-        ),
+        .addStringOption(opt =>
+            opt.setName("win")
+            .setDescription("Texte gagné.")
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(sub =>
+        sub
+        .setName("show")
+        .setDescription("Afficher les récompenses configurées avec pagination.")
+    )
+    .addSubcommand(sub =>
+        sub
+        .setName("clear")
+        .setDescription("Réinitialiser toutes les récompenses du calendrier.")
+    ),
 
-    // /blacklist SYSTEM
     new SlashCommandBuilder()
-        .setName("blacklist")
-        .setDescription("Gérer la blacklist du calendrier.")
-        .addSubcommand(sc =>
-            sc.setName("add")
-              .setDescription("Ajouter un utilisateur à la blacklist.")
-              .addUserOption(opt =>
-                opt.setName("user").setDescription("Utilisateur à blacklister").setRequired(true)
-              )
+    .setName("blacklist")
+    .setDescription("Gérer la blacklist du calendrier.")
+    .addSubcommand(sc =>
+        sc.setName("add")
+        .setDescription("Ajouter un utilisateur à la blacklist.")
+        .addUserOption(opt =>
+            opt.setName("user").setDescription("Utilisateur à blacklister").setRequired(true)
         )
-        .addSubcommand(sc =>
-            sc.setName("remove")
-              .setDescription("Retirer un utilisateur de la blacklist.")
-              .addUserOption(opt =>
-                opt.setName("user").setDescription("Utilisateur à retirer").setRequired(true)
-              )
+    )
+    .addSubcommand(sc =>
+        sc.setName("remove")
+        .setDescription("Retirer un utilisateur de la blacklist.")
+        .addUserOption(opt =>
+            opt.setName("user").setDescription("Utilisateur à retirer").setRequired(true)
         )
-        .addSubcommand(sc =>
-            sc.setName("list")
-              .setDescription("Liste des utilisateurs blacklistés.")
-        )
-        .addSubcommand(sc =>
-            sc.setName("clear")
-              .setDescription("Réinitialiser entièrement la blacklist.")
-        )
+    )
+    .addSubcommand(sc =>
+        sc.setName("list")
+        .setDescription("Liste des utilisateurs blacklistés.")
+    )
+    .addSubcommand(sc =>
+        sc.setName("clear")
+        .setDescription("Réinitialiser entièrement la blacklist.")
+    )
 
 ].map(c => c.toJSON());
 
-// ===================== DEPLOIEMENT SLASH =====================
 client.once(Events.ClientReady, async () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
 
-    const rest = new REST({ version: "10" }).setToken(TOKEN);
-    await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+    const rest = new REST({
+        version: "10"
+    }).setToken(TOKEN);
+    await rest.put(Routes.applicationCommands(client.user.id), {
+        body: commands
+    });
 
     console.log("Toutes les commandes ont été chargées !");
 });
 
-// ===================== UTILS =====================
-
-// LOG EMBED (Noël premium)
 function buildChristmasLog(description) {
     return new EmbedBuilder()
         .setColor("#FF0000")
@@ -155,14 +144,12 @@ function buildChristmasLog(description) {
         .setDescription(description);
 }
 
-// minimaliste djibril embed
 function buildDjibrilEmbed(desc) {
     return new EmbedBuilder()
         .setColor("#2F3136")
         .setDescription(desc);
 }
 
-// FIN DU CALENDRIER = 25 décembre 23h59
 function getCalendarEndTimestamp() {
     const now = new Date();
     const year = now.getFullYear();
@@ -170,24 +157,34 @@ function getCalendarEndTimestamp() {
     return Math.floor(endDate.getTime() / 1000);
 }
 
-// règle Option A (décembre uniquement, jour <= aujourd'hui) avec bypass owners
 function canUserClaimDay(userId, day) {
     const now = new Date();
     const month = now.getMonth();
     const today = now.getDate();
 
-    if (isOwner(userId)) return { allowed: true, reason: "OWNER" };
+    if (isOwner(userId)) return {
+        allowed: true,
+        reason: "OWNER"
+    };
 
     if (month !== 11)
-        return { allowed: false, reason: "NOT_DECEMBER" };
+        return {
+            allowed: false,
+            reason: "NOT_DECEMBER"
+        };
 
     if (day > today)
-        return { allowed: false, reason: "DAY_FUTURE" };
+        return {
+            allowed: false,
+            reason: "DAY_FUTURE"
+        };
 
-    return { allowed: true, reason: "OK" };
+    return {
+        allowed: true,
+        reason: "OK"
+    };
 }
 
-// pagination /récompense show
 const REWARDS_PER_PAGE = 5;
 const MAX_DAYS = 25;
 const MAX_PAGES = Math.ceil(MAX_DAYS / REWARDS_PER_PAGE);
@@ -223,45 +220,42 @@ function buildRewardsPageEmbed(page, rewardsByDay) {
         .setColor("#FF0000")
         .setTitle("Liste des récompenses")
         .setDescription(desc)
-        .setFooter({ text: `Page ${page} / ${MAX_PAGES}` });
+        .setFooter({
+            text: `Page ${page} / ${MAX_PAGES}`
+        });
 }
 
 function buildRewardsPageComponents(page) {
     const row = new ActionRowBuilder();
-    // pagination stricte : pas de boucle
     if (page > 1) {
         row.addComponents(
             new ButtonBuilder()
-                .setCustomId(`rewardshow_prev_${page}`)
-                .setLabel("◀️")
-                .setStyle(ButtonStyle.Secondary)
+            .setCustomId(`rewardshow_prev_${page}`)
+            .setLabel("◀️")
+            .setStyle(ButtonStyle.Secondary)
         );
     }
     if (page < MAX_PAGES) {
         row.addComponents(
             new ButtonBuilder()
-                .setCustomId(`rewardshow_next_${page}`)
-                .setLabel("▶️")
-                .setStyle(ButtonStyle.Secondary)
+            .setCustomId(`rewardshow_next_${page}`)
+            .setLabel("▶️")
+            .setStyle(ButtonStyle.Secondary)
         );
     }
 
     return row.components.length > 0 ? [row] : [];
 }
 
-// ===================== INTERACTIONS =====================
 client.on(Events.InteractionCreate, async interaction => {
 
-    // ---------------------- BOUTONS ----------------------
     if (interaction.isButton()) {
         const customId = interaction.customId;
 
-        // BOUTONS CLAIM CALENDRIER
         if (customId.startsWith("advent_")) {
             const dayStr = customId.split("_")[1];
             const day = parseInt(dayStr, 10);
 
-            // Vérification BLACKLIST
             db.get(
                 "SELECT * FROM advent_blacklist WHERE guild_id = ? AND user_id = ?",
                 [interaction.guild.id, interaction.user.id],
@@ -273,7 +267,6 @@ client.on(Events.InteractionCreate, async interaction => {
                         });
                     }
 
-                    // --- RÉCOMPENSE ---
                     db.get("SELECT * FROM advent_rewards WHERE day = ?", [day], async (err2, reward) => {
                         if (!reward) {
                             return interaction.reply({
@@ -282,7 +275,6 @@ client.on(Events.InteractionCreate, async interaction => {
                             });
                         }
 
-                        // Vérification date
                         const check = canUserClaimDay(interaction.user.id, day);
                         if (!check.allowed) {
                             if (check.reason === "NOT_DECEMBER") {
@@ -304,8 +296,6 @@ client.on(Events.InteractionCreate, async interaction => {
                                 flags: EPHEMERAL
                             });
                         }
-
-                        // Déjà claim ?
                         db.get(
                             "SELECT * FROM advent_claims WHERE user_id = ? AND day = ?",
                             [interaction.user.id, day],
@@ -317,7 +307,6 @@ client.on(Events.InteractionCreate, async interaction => {
                                     });
                                 }
 
-                                // Claim
                                 db.run("INSERT INTO advent_claims (user_id, day) VALUES (?, ?)", [
                                     interaction.user.id,
                                     day
@@ -333,7 +322,6 @@ client.on(Events.InteractionCreate, async interaction => {
                                 else if (hasRole) finalMsg += ` Vous gagnez le rôle <@&${reward.role_id}>.`;
                                 else if (hasText) finalMsg += ` Vous gagnez **${reward.win_text}**.`;
 
-                                // Attribution du rôle
                                 if (hasRole) {
                                     try {
                                         const role = interaction.guild.roles.cache.get(reward.role_id);
@@ -345,7 +333,10 @@ client.on(Events.InteractionCreate, async interaction => {
                                     }
                                 }
 
-                                await interaction.reply({ content: finalMsg, flags: EPHEMERAL });
+                                await interaction.reply({
+                                    content: finalMsg,
+                                    flags: EPHEMERAL
+                                });
 
                                 // LOGS
                                 db.get("SELECT * FROM advent_logs WHERE guild_id = ?", [interaction.guild.id], (err4, logs) => {
@@ -383,7 +374,9 @@ client.on(Events.InteractionCreate, async interaction => {
 
                                     desc += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
-                                    channel.send({ embeds: [buildChristmasLog(desc)] });
+                                    channel.send({
+                                        embeds: [buildChristmasLog(desc)]
+                                    });
                                 });
                             }
                         );
@@ -394,7 +387,6 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
 
-        // BOUTONS PAGINATION /récompense show
         if (customId.startsWith("rewardshow_")) {
             if (!isOwner(interaction.user.id)) {
                 return interaction.reply({
@@ -436,13 +428,14 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
     }
 
-    // ---------------------- SLASH COMMANDS ----------------------
     if (!interaction.isChatInputCommand()) return;
 
     if (!isOwner(interaction.user.id))
-        return interaction.reply({ content: "Commande réservée aux owners.", flags: EPHEMERAL });
+        return interaction.reply({
+            content: "Commande réservée aux owners.",
+            flags: EPHEMERAL
+        });
 
-    // /calendrier
     if (interaction.commandName === "calendrier") {
         const salon = interaction.options.getChannel("salon");
         const endTs = getCalendarEndTimestamp();
@@ -462,17 +455,18 @@ client.on(Events.InteractionCreate, async interaction => {
                 "",
                 "Bonne chance et bonnes fêtes !"
             ].join("\n"))
-            .setFooter({ text: "Calendrier de l'Avent — 25 jours" });
+            .setFooter({
+                text: "Calendrier de l'Avent — 25 jours"
+            });
 
-        // 25 boutons rouges
         const rows = [];
         let row = new ActionRowBuilder();
         for (let i = 1; i <= MAX_DAYS; i++) {
             row.addComponents(
                 new ButtonBuilder()
-                    .setCustomId("advent_" + i)
-                    .setLabel(String(i))
-                    .setStyle(ButtonStyle.Danger)
+                .setCustomId("advent_" + i)
+                .setLabel(String(i))
+                .setStyle(ButtonStyle.Danger)
             );
             if (row.components.length === 5) {
                 rows.push(row);
@@ -481,12 +475,17 @@ client.on(Events.InteractionCreate, async interaction => {
         }
         if (row.components.length > 0) rows.push(row);
 
-        await salon.send({ embeds: [embed], components: rows });
+        await salon.send({
+            embeds: [embed],
+            components: rows
+        });
 
-        return interaction.reply({ content: "Calendrier envoyé.", flags: EPHEMERAL });
+        return interaction.reply({
+            content: "Calendrier envoyé.",
+            flags: EPHEMERAL
+        });
     }
 
-    // /setlogs
     if (interaction.commandName === "setlogs") {
         const salon = interaction.options.getChannel("salon");
 
@@ -495,14 +494,15 @@ client.on(Events.InteractionCreate, async interaction => {
             salon.id
         ]);
 
-        return interaction.reply({ content: "Salon de logs configuré.", flags: EPHEMERAL });
+        return interaction.reply({
+            content: "Salon de logs configuré.",
+            flags: EPHEMERAL
+        });
     }
 
-    // /récompense
     if (interaction.commandName === "récompense") {
         const sub = interaction.options.getSubcommand();
 
-        // /récompense set
         if (sub === "set") {
             const jour = interaction.options.getInteger("jour");
             const role = interaction.options.getRole("role");
@@ -519,10 +519,12 @@ client.on(Events.InteractionCreate, async interaction => {
                 [jour, role ? role.id : null, win || null]
             );
 
-            return interaction.reply({ content: "Récompense du jour " + jour + " configurée.", flags: EPHEMERAL });
+            return interaction.reply({
+                content: "Récompense du jour " + jour + " configurée.",
+                flags: EPHEMERAL
+            });
         }
 
-        // /récompense show
         if (sub === "show") {
             db.all("SELECT * FROM advent_rewards", [], (err, rows) => {
                 const rewardsByDay = {};
@@ -546,7 +548,6 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
 
-        // /récompense clear
         if (sub === "clear") {
             db.run("DELETE FROM advent_rewards", [], () => {
                 return interaction.reply({
@@ -558,11 +559,9 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 
-    // /blacklist
     if (interaction.commandName === "blacklist") {
         const sub = interaction.options.getSubcommand();
 
-        // ADD
         if (sub === "add") {
             const user = interaction.options.getUser("user");
 
@@ -584,7 +583,6 @@ client.on(Events.InteractionCreate, async interaction => {
                 "INSERT INTO advent_blacklist (guild_id, user_id) VALUES (?, ?)",
                 [interaction.guild.id, user.id],
                 () => {
-                    // log
                     db.get("SELECT * FROM advent_logs WHERE guild_id = ?", [interaction.guild.id], (err, logs) => {
                         if (!logs) return;
                         const channel = interaction.guild.channels.cache.get(logs.channel_id);
@@ -597,7 +595,9 @@ client.on(Events.InteractionCreate, async interaction => {
                         desc += "``📅`` Date : <t:" + now + ":F>\n";
                         desc += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
-                        channel.send({ embeds: [buildChristmasLog(desc)] });
+                        channel.send({
+                            embeds: [buildChristmasLog(desc)]
+                        });
                     });
 
                     return interaction.reply({
@@ -608,7 +608,6 @@ client.on(Events.InteractionCreate, async interaction => {
             );
         }
 
-        // REMOVE
         if (sub === "remove") {
             const user = interaction.options.getUser("user");
 
@@ -616,7 +615,6 @@ client.on(Events.InteractionCreate, async interaction => {
                 "DELETE FROM advent_blacklist WHERE guild_id = ? AND user_id = ?",
                 [interaction.guild.id, user.id],
                 () => {
-                    // log
                     db.get("SELECT * FROM advent_logs WHERE guild_id = ?", [interaction.guild.id], (err, logs) => {
                         if (!logs) return;
                         const channel = interaction.guild.channels.cache.get(logs.channel_id);
@@ -629,7 +627,9 @@ client.on(Events.InteractionCreate, async interaction => {
                         desc += "``📅`` Date : <t:" + now + ":F>\n";
                         desc += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
-                        channel.send({ embeds: [buildChristmasLog(desc)] });
+                        channel.send({
+                            embeds: [buildChristmasLog(desc)]
+                        });
                     });
 
                     return interaction.reply({
@@ -640,7 +640,6 @@ client.on(Events.InteractionCreate, async interaction => {
             );
         }
 
-        // LIST
         if (sub === "list") {
             db.all(
                 "SELECT * FROM advent_blacklist WHERE guild_id = ?",
@@ -648,7 +647,10 @@ client.on(Events.InteractionCreate, async interaction => {
                 (err, rows) => {
                     if (!rows || rows.length === 0) {
                         const embed = buildDjibrilEmbed("``✨`` Aucun utilisateur dans la blacklist.");
-                        return interaction.reply({ embeds: [embed], flags: EPHEMERAL });
+                        return interaction.reply({
+                            embeds: [embed],
+                            flags: EPHEMERAL
+                        });
                     }
 
                     let desc = "``⛔`` Utilisateurs blacklistés :\n\n";
@@ -658,12 +660,14 @@ client.on(Events.InteractionCreate, async interaction => {
                     desc += "\nTotal : **" + rows.length + "**";
 
                     const embed = buildDjibrilEmbed(desc);
-                    return interaction.reply({ embeds: [embed], flags: EPHEMERAL });
+                    return interaction.reply({
+                        embeds: [embed],
+                        flags: EPHEMERAL
+                    });
                 }
             );
         }
 
-        // CLEAR
         if (sub === "clear") {
             db.run(
                 "DELETE FROM advent_blacklist WHERE guild_id = ?",
@@ -683,7 +687,9 @@ client.on(Events.InteractionCreate, async interaction => {
                         desc += "``📅`` Date : <t:" + now + ":F>\n";
                         desc += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
-                        channel.send({ embeds: [buildChristmasLog(desc)] });
+                        channel.send({
+                            embeds: [buildChristmasLog(desc)]
+                        });
                     });
 
                     return interaction.reply({
@@ -696,5 +702,4 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// ===================== LOGIN =====================
 client.login(TOKEN);
